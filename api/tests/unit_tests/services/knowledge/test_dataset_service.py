@@ -3020,6 +3020,43 @@ class TestDatasetServiceDocumentCases:
             duplicate_proxy_cls.return_value.delay.assert_called_once()
 
         @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        def test_save_document_with_dataset_id_accepts_account_without_current_tenant(
+            self, account_context, sqlite_session: Session
+        ):
+            # The Service API passes the dataset creator loaded from the database, which has no current tenant.
+            creator = make_account(account_id="user-1", name="Creator", email="creator@example.com")
+            assert creator.current_tenant_id is None
+            dataset = _dataset_row(data_source_type=DataSourceType.UPLOAD_FILE)
+            dataset_process_rule = _process_rule()
+            knowledge_config = _make_upload_knowledge_config(file_ids=["file-1"])
+            duplicate_document = _document_row(document_id="doc-duplicate", name="existing.txt")
+            upload_file = _upload_file(file_id="file-1", name="existing.txt")
+            sqlite_session.add_all([dataset, dataset_process_rule, duplicate_document, upload_file])
+            sqlite_session.commit()
+
+            with (
+                _dataset_service_document_patch(
+                    "services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()
+                ),
+                _dataset_service_document_patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+                _dataset_service_document_patch("services.knowledge.dataset_service.DocumentIndexingTaskProxy"),
+                _dataset_service_document_patch(
+                    "services.knowledge.dataset_service.DuplicateDocumentIndexingTaskProxy"
+                ) as duplicate_proxy_cls,
+            ):
+                mock_redis.lock.return_value = _make_lock_context()
+                documents, _ = _dataset_service_document_DocumentService.save_document_with_dataset_id(
+                    dataset,
+                    knowledge_config,
+                    creator,
+                    dataset_process_rule=dataset_process_rule,
+                    session=sqlite_session,
+                )
+
+            assert [document.id for document in documents] == ["doc-duplicate"]
+            duplicate_proxy_cls.assert_called_once_with(dataset.tenant_id, dataset.id, ["doc-duplicate"])
+
+        @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         def test_save_document_with_dataset_id_notion_import_truncates_names_and_cleans_removed_pages(
             self, account_context, sqlite_session: Session
         ):

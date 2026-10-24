@@ -2162,7 +2162,6 @@ class DocumentService:
         # Compatibility entry point for existing callers that own their session.
         DatasetService.check_doc_form(dataset, knowledge_config.doc_form, session=session)
         assert isinstance(account, Account)
-        assert account.current_tenant_id is not None
         config = DocumentService.prepare_document_creation(
             DocumentCreationDataset(
                 dataset.tenant_id, dataset.indexing_technique, dataset.embedding_model, dataset.embedding_model_provider
@@ -2406,7 +2405,7 @@ class DocumentService:
                     session.scalars(
                         select(Document).where(
                             Document.dataset_id == dataset.id,
-                            Document.tenant_id == account.current_tenant_id,
+                            Document.tenant_id == dataset.tenant_id,
                             Document.data_source_type == DataSourceType.UPLOAD_FILE,
                             Document.enabled.is_(True),
                             Document.name.in_(file_names),
@@ -2461,7 +2460,7 @@ class DocumentService:
                     session.scalars(
                         select(Document).where(
                             Document.dataset_id == dataset.id,
-                            Document.tenant_id == account.current_tenant_id,
+                            Document.tenant_id == dataset.tenant_id,
                             Document.data_source_type == DataSourceType.NOTION_IMPORT,
                             Document.enabled.is_(True),
                         )
@@ -3008,7 +3007,7 @@ class DocumentService:
                         select(DataSourceOauthBinding)
                         .where(
                             sa.and_(
-                                DataSourceOauthBinding.tenant_id == account.current_tenant_id,
+                                DataSourceOauthBinding.tenant_id == dataset.tenant_id,
                                 DataSourceOauthBinding.provider == "notion",
                                 DataSourceOauthBinding.disabled.is_(False),
                                 DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
