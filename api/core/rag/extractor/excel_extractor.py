@@ -96,11 +96,14 @@ class ExcelExtractor(BaseExtractor):
                         valid_columns={column_idx + 1 for column_idx in column_map},
                         min_row=start_row,
                     )
+                    merged_values = self._merged_cell_values(sheet)
                     for row in sheet.iter_rows(min_row=start_row, max_col=max_col_idx, values_only=False):
                         page_content = []
                         row_has_content = False
                         for col_idx, cell in enumerate(row):
                             value = cell.value
+                            if value is None:
+                                value = merged_values.get((getattr(cell, "row", None), getattr(cell, "column", None)))
                             if col_idx in column_map:
                                 col_name = column_map[col_idx]
                                 if hasattr(cell, "hyperlink") and cell.hyperlink:
@@ -153,7 +156,31 @@ class ExcelExtractor(BaseExtractor):
         else:
             raise ValueError(f"Unsupported file extension: {file_extension}")
 
-        return documents
+        # Identical rows (e.g. a sheet duplicated within the workbook) would only produce duplicate chunks.
+        unique_documents: list[Document] = []
+        seen: set[str] = set()
+        for doc in documents:
+            if doc.page_content not in seen:
+                seen.add(doc.page_content)
+                unique_documents.append(doc)
+        return unique_documents
+
+    @staticmethod
+    def _merged_cell_values(sheet) -> dict[tuple[int, int], object]:
+        """Map every covered cell of a merged range to the value of its top-left cell.
+
+        openpyxl only stores a merged range's value in its top-left cell, so rows under a
+        vertically merged cell would otherwise lose that column's value.
+        """
+        values: dict[tuple[int, int], object] = {}
+        for merged_range in sheet.merged_cells.ranges:
+            top_left = sheet.cell(row=merged_range.min_row, column=merged_range.min_col).value
+            if top_left is None:
+                continue
+            for row_idx in range(merged_range.min_row, merged_range.max_row + 1):
+                for col_idx in range(merged_range.min_col, merged_range.max_col + 1):
+                    values[(row_idx, col_idx)] = top_left
+        return values
 
     def _extract_images_from_sheet(
         self, sheet_name: str, sheet, valid_columns: set[int], min_row: int

@@ -33,6 +33,7 @@ class _FakeSheet:
         self._header_rows = header_rows
         self._data_rows = data_rows
         self._images = images or []
+        self.merged_cells = SimpleNamespace(ranges=[])
 
     def iter_rows(self, min_row=1, max_row=None, max_col=None, values_only=False):
         if values_only:
@@ -111,6 +112,32 @@ class TestExcelExtractor:
         assert docs[0].page_content == '"Name":"Alice";"Link":"[Doc](https://example.com/doc)"'
         assert docs[1].page_content == '"Name":"";"Link":"123"'
         assert all(doc.metadata["source"] == "/tmp/sample.xlsx" for doc in docs)
+
+    def test_extract_xlsx_fills_merged_cells_and_skips_duplicate_rows(self, tmp_path):
+        from openpyxl import Workbook
+
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Procedure"
+        sheet.append(["Question", "Clinic", "Details"])
+        sheet.append(["How to book anesthesia", "Anesthesia", "Admission request required"])
+        sheet.append([None, None, "Confirmed bookings 10:00-22:00"])
+        sheet.append([None, None, "Waiting policy Sat-Wed 10:00-20:00"])
+        sheet.merge_cells("A2:A4")
+        sheet.merge_cells("B2:B4")
+        duplicate = workbook.create_sheet("Copy")
+        duplicate.append(["Question", "Clinic", "Details"])
+        duplicate.append(["How to book anesthesia", "Anesthesia", "Admission request required"])
+        path = tmp_path / "procedures.xlsx"
+        workbook.save(path)
+
+        docs = ExcelExtractor(str(path)).extract()
+
+        assert [doc.page_content for doc in docs] == [
+            '"Question":"How to book anesthesia";"Clinic":"Anesthesia";"Details":"Admission request required"',
+            '"Question":"How to book anesthesia";"Clinic":"Anesthesia";"Details":"Confirmed bookings 10:00-22:00"',
+            '"Question":"How to book anesthesia";"Clinic":"Anesthesia";"Details":"Waiting policy Sat-Wed 10:00-20:00"',
+        ]
 
     def test_extract_xlsx_turns_embedded_images_into_markdown_links(
         self,
