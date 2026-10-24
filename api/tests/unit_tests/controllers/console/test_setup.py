@@ -108,6 +108,48 @@ def test_console_setup_fastopenapi_post_success(
     mark_setup_completed.assert_called_once_with()
 
 
+@pytest.mark.parametrize(
+    ("sent_timezone", "expected_timezone"),
+    [("Asia/Riyadh", "Asia/Riyadh"), ("Mars/Olympus_Mons", None)],
+    ids=["valid", "unrecognised-falls-back"],
+)
+def test_console_setup_fastopenapi_post_forwards_browser_timezone(
+    app: DifyApp,
+    setup_service: Mock,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    sent_timezone: str,
+    expected_timezone: str | None,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    monkeypatch.setattr(setup_controller, "is_init_validated", lambda: True)
+    monkeypatch.setattr(setup_controller, "mark_setup_completed", Mock())
+    payload = {
+        "email": "admin@example.com",
+        "name": "Admin",
+        "password": "Passw0rd1",
+        "language": "en-US",
+        "timezone": sent_timezone,
+    }
+
+    response = app.test_client().post(
+        "/console/api/setup", json=payload, environ_overrides={"REMOTE_ADDR": "203.0.113.7"}
+    )
+
+    assert response.status_code == 201
+    setup_service.initialize.assert_called_once_with(
+        SetupInput(
+            email="admin@example.com",
+            name="Admin",
+            password="Passw0rd1",
+            ip_address="203.0.113.7",
+            language="en-US",
+            timezone=expected_timezone,
+        ),
+        initialization_validated=True,
+    )
+
+
 def test_console_setup_fastopenapi_post_rejects_cloud_edition(
     app: DifyApp,
     setup_service: Mock,

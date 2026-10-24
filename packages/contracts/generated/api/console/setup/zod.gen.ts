@@ -18,6 +18,7 @@ export const zSetupRequestPayload = z.object({
   language: z.string().nullish(),
   name: z.string().max(30),
   password: z.string(),
+  timezone: z.string().nullish(),
 })
 
 /**

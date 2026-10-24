@@ -280,6 +280,7 @@ class AccountSetupProvisioner:
                 name=setup.name,
                 interface_language=get_valid_language(setup.language),
                 password=setup.password,
+                timezone=setup.timezone,
                 ip_address=setup.ip_address,
                 is_setup=True,
                 initialized=True,

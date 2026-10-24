@@ -65,5 +65,6 @@ class SetupService:
                     password=setup.password,
                     ip_address=setup.ip_address,
                     language=setup.language,
+                    timezone=setup.timezone,
                 )
             )

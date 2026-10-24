@@ -221,3 +221,36 @@ def test_setup_persists_initialized_owner_before_telemetry(
         SetupInput(email="a@example.com", name="A", password="Valid123!", ip_address="127.0.0.1", language="en-US")
     )
     assert len(reported) == 1
+
+
+@pytest.mark.parametrize(
+    ("setup_timezone", "expected_timezone"),
+    [("Asia/Riyadh", "Asia/Riyadh"), (None, "America/New_York")],
+    ids=["browser-timezone", "language-default"],
+)
+def test_setup_stores_admin_timezone(
+    account_domain: AccountDomain,
+    sqlite_session_factory: sessionmaker[Session],
+    setup_timezone: str | None,
+    expected_timezone: str,
+) -> None:
+    provisioner = AccountSetupProvisioner(
+        accounts=account_domain.accounts,
+        workspaces=account_domain.provisioning,
+        installation=InstallationStateRepository(session_factory=sqlite_session_factory),
+        telemetry=Mock(),
+    )
+
+    provisioner.provision(
+        SetupInput(
+            email="a@example.com",
+            name="A",
+            password="Valid123!",
+            ip_address="127.0.0.1",
+            language="en-US",
+            timezone=setup_timezone,
+        )
+    )
+
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(Account.timezone)) == expected_timezone

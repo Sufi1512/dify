@@ -29,6 +29,7 @@ class SetupInput:
     password: str
     ip_address: str
     language: str | None
+    timezone: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

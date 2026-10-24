@@ -6,6 +6,7 @@ import { consoleClient, consoleQuery } from '@/service/console'
 import { expectLoadingButton } from '@/test/button'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { encryptPassword } from '@/utils/encryption'
+import { getBrowserTimezone } from '@/utils/timezone'
 import InstallForm from './installForm'
 
 const render = (ui: ReactElement) => renderWithConsoleQuery(ui)
@@ -256,9 +257,11 @@ describe('InstallForm', () => {
           name: 'Admin',
           password: 'Password123',
           language: 'en-US',
+          timezone: getBrowserTimezone(),
         },
       })
     })
+    expect(getBrowserTimezone()).toBeTruthy()
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith({

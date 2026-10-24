@@ -14,6 +14,7 @@ export type SetupRequestPayload = {
   language?: string | null
   name: string
   password: string
+  timezone?: string | null
 }
 
 export type SetupResponse = {

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 from controllers.fastopenapi import console_router
 from extensions.ext_application_services import application_services
 from libs.helper import EmailStr, extract_remote_ip
+from libs.helper import timezone as validate_timezone
 from libs.password import valid_password
 from services.account.contracts import SetupInput
 from services.setup_service import InitializationValidationRequiredError, SetupAlreadyCompletedError
@@ -20,11 +21,23 @@ class SetupRequestPayload(BaseModel):
     name: str = Field(..., max_length=30, description="Admin name (max 30 characters)")
     password: str = Field(..., description="Admin password")
     language: str | None = Field(default=None, description="Admin language")
+    timezone: str | None = Field(default=None, description="Admin IANA timezone, e.g. 'Asia/Riyadh'")
 
     @field_validator("password")
     @classmethod
     def validate_password(cls, value: str) -> str:
         return valid_password(value)
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str | None) -> str | None:
+        # An unrecognised browser timezone must not block first-time setup; fall back to the language default.
+        if value is None:
+            return None
+        try:
+            return validate_timezone(value)
+        except ValueError:
+            return None
 
 
 class SetupStatusResponse(BaseModel):
@@ -81,6 +94,7 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
                 password=payload.password,
                 ip_address=extract_remote_ip(request),
                 language=payload.language,
+                timezone=payload.timezone,
             ),
             initialization_validated=is_init_validated(),
         )

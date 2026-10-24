@@ -25,6 +25,7 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { encryptPassword as encodePassword } from '@/utils/encryption'
+import { getBrowserTimezone } from '@/utils/timezone'
 
 const accountFormSchema = zPostSetupBody.pick({ email: true, name: true, password: true }).extend({
   email: zPostSetupBody.shape.email.pipe(z.email()),
@@ -73,6 +74,7 @@ const InstallForm = () => {
         body: {
           ...value,
           language: i18n.language,
+          timezone: getBrowserTimezone(),
         },
       })
 
