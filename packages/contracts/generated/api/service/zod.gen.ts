@@ -505,21 +505,6 @@ export const zConversationVariableInfiniteScrollPaginationResponse = z.object({
 })
 
 /**
- * ConversationVariableUpdatePayload
- */
-export const zConversationVariableUpdatePayload = z.object({
-  value: z.unknown(),
-})
-
-/**
- * ConversationVariableUpdatePayload
- */
-export const zConversationVariableUpdatePayloadWithUser = z.object({
-  user: z.string().optional(),
-  value: z.unknown(),
-})
-
-/**
  * ConversationVariablesQuery
  */
 export const zConversationVariablesQuery = z.object({
@@ -1089,6 +1074,30 @@ export const zConversationNotFoundError = zErrorResponse.and(
 )
 
 /**
+ * ConversationVariableNotFoundError
+ *
+ * The conversation variable was not found for this conversation.
+ */
+export const zConversationVariableNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_variable_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationVariableTypeMismatchError
+ *
+ * The new value does not match the conversation variable's type.
+ */
+export const zConversationVariableTypeMismatchError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_variable_type_mismatch'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * DatasetNameDuplicateError
  *
  * The dataset name already exists. Please modify your dataset name.
@@ -1467,6 +1476,21 @@ export const zJsonValueType = z.unknown()
 export const zJsonValue = z.unknown()
 
 /**
+ * ConversationVariableUpdatePayload
+ */
+export const zConversationVariableUpdatePayload = z.object({
+  value: zJsonValue,
+})
+
+/**
+ * ConversationVariableUpdatePayload
+ */
+export const zConversationVariableUpdatePayloadWithUser = z.object({
+  user: z.string().optional(),
+  value: zJsonValue,
+})
+
+/**
  * DocumentResponse
  */
 export const zDocumentResponse = z.object({
@@ -1529,6 +1553,8 @@ export const zHumanInputFormSubmissionData = z.object({
 
 /**
  * HumanInputFormSubmitPayload
+ *
+ * Legacy Human Input v1 submit payload shared by existing runtime surfaces.
  */
 export const zHumanInputFormSubmitPayload = z.object({
   action: z.string(),
@@ -1537,6 +1563,8 @@ export const zHumanInputFormSubmitPayload = z.object({
 
 /**
  * HumanInputFormSubmitPayload
+ *
+ * Legacy Human Input v1 submit payload shared by existing runtime surfaces.
  */
 export const zHumanInputFormSubmitPayloadWithUser = z.object({
   action: z.string(),
@@ -1941,6 +1969,13 @@ export const zKnowledgeFsEmbeddingSettingsResponse = z.object({
   provider: z.string(),
   revision: z.int().gte(1).nullish(),
   vector_space_id: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSLogicalDocumentDeletePayload
+ */
+export const zKnowledgeFsLogicalDocumentDeletePayload = z.object({
+  expectedRevision: z.int().gte(0),
 })
 
 /**
@@ -3304,6 +3339,7 @@ export const zKnowledgeFsSourceImportResponse = z.object({
  * KnowledgeFSSourcePageResponse
  */
 export const zKnowledgeFsSourcePageResponse = z.object({
+  has_children: z.boolean().nullish(),
   last_edited_time: z.string().nullish(),
   page_id: z.string(),
   page_name: z.string(),
@@ -3317,6 +3353,8 @@ export const zKnowledgeFsSourcePageResponse = z.object({
 export const zKnowledgeFsSourcePagesQuery = z.object({
   cursor: z.string().min(1).max(4096).nullish(),
   limit: z.int().gte(1).lte(200).optional().default(50),
+  parentId: z.string().min(1).max(4096).nullish(),
+  view: z.literal('tree').nullish(),
 })
 
 /**
@@ -4767,7 +4805,7 @@ export const zSegmentUpdatePayload = z.object({
  * Segmentation
  */
 export const zSegmentation = z.object({
-  chunk_overlap: z.int().optional().default(0),
+  chunk_overlap: z.int().gte(0).optional().default(0),
   max_tokens: z.int(),
   separator: z.string().optional().default('\n'),
 })
@@ -4931,6 +4969,11 @@ export const zParameters = z.object({
   sensitive_word_avoidance: z.object({
     enabled: z.boolean().optional(),
   }),
+  show_thoughts: z
+    .object({
+      enabled: z.boolean().optional(),
+    })
+    .optional(),
   speech_to_text: z.object({
     enabled: z.boolean().optional(),
   }),
@@ -5457,6 +5500,7 @@ export const zHumanInputFormDefinition = z.object({
   form_content: z.string(),
   form_id: z.string(),
   form_token: z.string().nullish(),
+  form_version: z.enum(['1', '2']).optional().default('1'),
   inputs: z.array(zFormInputConfig).optional(),
   node_id: z.string(),
   node_title: z.string(),
@@ -5677,7 +5721,7 @@ export const zDocumentTextUpdate = z.intersection(
  * HitTestingPayload
  */
 export const zHitTestingPayload = z.object({
-  attachment_ids: z.array(z.string()).nullish(),
+  attachment_ids: z.array(z.uuid()).nullish(),
   external_retrieval_model: z
     .object({
       score_threshold: z.number().optional(),
@@ -6248,7 +6292,7 @@ export const zGetConversationsByConversationIdVariablesQuery = z.object({
 })
 
 /**
- * Successfully retrieved conversation variables.
+ * Conversation variables retrieved successfully.
  */
 export const zGetConversationsByConversationIdVariablesResponse =
   zConversationVariableInfiniteScrollPaginationResponse
@@ -7209,6 +7253,26 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsQuery = z.obje
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   zKnowledgeFsLogicalDocumentListResponse
 
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody =
+  zKnowledgeFsLogicalDocumentDeletePayload
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders = z.object(
+  {
+    'Idempotency-Key': z.string().min(8).max(255),
+  },
+)
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath = z.object({
+  control_space_id: z.string(),
+  document_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base logical document deletion accepted
+ */
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
+  zKnowledgeFsDurableDeletionAcceptedResponse
+
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath = z.object({
   control_space_id: z.string(),
   document_id: z.string(),
@@ -7727,6 +7791,8 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesPath = z
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesQuery = z.object({
   cursor: z.string().min(1).max(4096).optional(),
   limit: z.int().gte(1).lte(200).optional().default(50),
+  parentId: z.string().min(1).max(4096).optional(),
+  view: z.string().optional(),
 })
 
 /**

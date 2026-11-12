@@ -571,6 +571,11 @@ export type ConversationVariableInfiniteScrollPaginationResponse = {
   limit: number
 }
 
+export type ConversationVariableNotFoundError = ErrorResponse & {
+  code: 'conversation_variable_not_found'
+  status: 404
+}
+
 export type ConversationVariableResponse = {
   created_at?: number | null
   description?: string | null
@@ -581,13 +586,18 @@ export type ConversationVariableResponse = {
   value_type: string
 }
 
+export type ConversationVariableTypeMismatchError = ErrorResponse & {
+  code: 'conversation_variable_type_mismatch'
+  status: 400
+}
+
 export type ConversationVariableUpdatePayload = {
-  value: unknown
+  value: JsonValue
 }
 
 export type ConversationVariableUpdatePayloadWithUser = {
   user?: string
-  value: unknown
+  value: JsonValue
 }
 
 export type ConversationVariablesQuery = {
@@ -1332,6 +1342,7 @@ export type HumanInputFormDefinition = {
   form_content: string
   form_id: string
   form_token?: string | null
+  form_version?: '1' | '2'
   inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string
@@ -1996,6 +2007,10 @@ export type KnowledgeFsEmbeddingSettingsResponse = {
   provider: string
   revision?: number | null
   vector_space_id?: string | null
+}
+
+export type KnowledgeFsLogicalDocumentDeletePayload = {
+  expectedRevision: number
 }
 
 export type KnowledgeFsLogicalDocumentListResponse = {
@@ -2866,6 +2881,7 @@ export type KnowledgeFsSourceListResponse = {
 }
 
 export type KnowledgeFsSourcePageResponse = {
+  has_children?: boolean | null
   last_edited_time?: string | null
   page_id: string
   page_name: string
@@ -2876,6 +2892,8 @@ export type KnowledgeFsSourcePageResponse = {
 export type KnowledgeFsSourcePagesQuery = {
   cursor?: string | null
   limit?: number
+  parentId?: string | null
+  view?: 'tree' | null
 }
 
 export type KnowledgeFsSourcePagesResponse = {
@@ -3467,6 +3485,9 @@ export type Parameters = {
     enabled?: boolean
   }
   sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  show_thoughts?: {
     enabled?: boolean
   }
   speech_to_text: {
@@ -5095,8 +5116,16 @@ export type GetConversationsByConversationIdVariablesData = {
 export type GetConversationsByConversationIdVariablesErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
-  404: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ConversationNotFoundError | ConversationVariableNotFoundError | ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -5121,10 +5150,18 @@ export type PutConversationsByConversationIdVariablesByVariableIdData = {
 }
 
 export type PutConversationsByConversationIdVariablesByVariableIdErrors = {
-  400: NotChatAppError | ErrorResponse
+  400: ConversationVariableTypeMismatchError | NotChatAppError | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
-  404: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ConversationNotFoundError | ConversationVariableNotFoundError | ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -7395,6 +7432,40 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses = {
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses]
 
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData = {
+  body: KnowledgeFsLogicalDocumentDeletePayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}'
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses = {
+  202: KnowledgeFsDurableDeletionAcceptedResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
+  DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses[keyof DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData = {
   body?: never
   path: {
@@ -8554,6 +8625,8 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesData = {
   query?: {
     cursor?: string
     limit?: number
+    parentId?: string
+    view?: string
   }
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages'
 }
